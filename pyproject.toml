@@ -16,3 +16,6 @@ packages = [{include = "tldr_bank", from = "src"}]
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+tldr_bank = "tldr_bank.main:main"
