@@ -1,0 +1,31 @@
+# Custom .gitignore for Python projects
+/csv_examples
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv/
+venv/
+
+# Poetry lock file if you don't want to commit
+# (usually you DO want to commit poetry.lock)
+# poetry.lock
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# CSV examples or other local data
+csv_examples.csv
+/csv_examples/
+
+# IDE / editor folders
+.vscode/
+.idea/
