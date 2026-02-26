@@ -76,7 +76,7 @@ class Reporter:
             self.console.print("No data to display.")
         else:
             data_table = self.totals if self.show_all else self.totals.head(5)
-            table = Table(title="Top Costs")
+            table = Table(title="Top Costs / Income")
             table.add_column("#")
             table.add_column("Thing")
             table.add_column("Total")
@@ -87,18 +87,19 @@ class Reporter:
         # --- Insights ---
         if self.df is not None and not self.df.empty:
             df = self.df
+            filtered = df.copy()  # include both incoming & outgoing for insight
             if self.income_mode:
-                filtered = df[df['amount'] > 0]
+                filtered = filtered[filtered['amount'] > 0]
             else:
-                filtered = df[df['amount'] < 0]
+                filtered = filtered[filtered['amount'] < 0]
 
             if not filtered.empty:
                 months = filtered.groupby(filtered['date'].dt.to_period("M"))['amount'].sum()
                 years = filtered.groupby(filtered['date'].dt.year)['amount'].sum()
-                largest_expense = filtered.loc[filtered['amount'].idxmin() if not self.income_mode else filtered['amount'].idxmax()]
-                smallest_expense = filtered.loc[filtered['amount'].idxmax() if not self.income_mode else filtered['amount'].idxmin()]
-                most_expensive_thing = filtered.groupby('description')['amount'].sum().idxmin() if not self.income_mode else filtered.groupby('description')['amount'].sum().idxmax()
-                cheapest_thing = filtered.groupby('description')['amount'].sum().idxmax() if not self.income_mode else filtered.groupby('description')['amount'].sum().idxmin()
+                largest = filtered.loc[filtered['amount'].idxmax()]
+                smallest = filtered.loc[filtered['amount'].idxmin()]
+                most_expensive_thing = df.groupby('description')['amount'].sum().idxmin() if not self.income_mode else df.groupby('description')['amount'].sum().idxmax()
+                cheapest_thing = df.groupby('description')['amount'].sum().idxmax() if not self.income_mode else df.groupby('description')['amount'].sum().idxmin()
                 most_bought = filtered['description'].value_counts().idxmax()
                 least_bought = filtered['description'].value_counts().idxmin()
 
@@ -109,8 +110,8 @@ class Reporter:
                     self.console.print(f"\nMost Expensive Year: {years.idxmin() if not self.income_mode else years.idxmax()} ({years.min() if not self.income_mode else years.max():.2f})")
                     self.console.print(f"Cheapest Year: {years.idxmax() if not self.income_mode else years.idxmin()} ({years.max() if not self.income_mode else years.min():.2f})")
 
-                self.console.print(f"\nLargest Expense: {largest_expense['description']} ({largest_expense['amount']:.2f})")
-                self.console.print(f"Smallest Expense: {smallest_expense['description']} ({smallest_expense['amount']:.2f})")
+                self.console.print(f"\nLargest Transaction: {largest['description']} ({largest['amount']:.2f})")
+                self.console.print(f"Smallest Transaction: {smallest['description']} ({smallest['amount']:.2f})")
                 self.console.print(f"\nMost Expensive Thing: {most_expensive_thing}")
                 self.console.print(f"Cheapest Thing: {cheapest_thing}")
                 self.console.print(f"Most Bought Thing: {most_bought}")
@@ -141,19 +142,55 @@ class Reporter:
 # FILE: keyword_manager.py
 ################################################################################
 
+# src/tldr_bank/keyword_manager.py
+
 import pandas as pd
+from rapidfuzz import fuzz
 
 class KeywordManager:
-    def __init__(self, df, currency='GBP'):
+    def __init__(self, df, currency='GBP', fuzzy_threshold=100):
+        """
+        Args:
+            df (pd.DataFrame): Must contain 'description' and 'amount'
+            currency (str): Currency code
+            fuzzy_threshold (int): 0-100, threshold for fuzzy grouping
+        """
         self.df = df
         self.currency = currency
+        self.fuzzy_threshold = fuzzy_threshold
+
+    def _fuzzy_group(self, descriptions):
+        """
+        Group similar descriptions based on fuzzy matching.
+        """
+        mapping = {}
+        groups = {}
+
+        for d in descriptions:
+            found = False
+            for key in groups:
+                if fuzz.ratio(d.lower(), key.lower()) >= self.fuzzy_threshold:
+                    groups[key].append(d)
+                    mapping[d] = key
+                    found = True
+                    break
+            if not found:
+                groups[d] = [d]
+                mapping[d] = d
+        return mapping
 
     def run(self, reverse=False):
         df = self.df.copy()
-        df['keyword'] = df['description'].str.lower().str.strip()
+        df['description'] = df['description'].fillna('unknown')
+
+        if self.fuzzy_threshold < 100:
+            mapping = self._fuzzy_group(df['description'])
+            df['keyword'] = df['description'].map(mapping)
+        else:
+            df['keyword'] = df['description'].str.lower().str.strip()
+
         totals = df.groupby('keyword')['amount'].sum().sort_values(ascending=not reverse)
         return totals
-
 
 ################################################################################
 # FILE: processor.py
@@ -209,6 +246,8 @@ class FileLocker:
 # FILE: main.py
 ################################################################################
 
+# src/tldr_bank/main.py
+
 import argparse
 from .processor import CSVProcessor
 from .keyword_manager import KeywordManager
@@ -223,6 +262,7 @@ def main():
     parser.add_argument('--year', type=int, help='Filter by year')
     parser.add_argument('--income', action='store_true', help='Income mode')
     parser.add_argument('--no-chart', action='store_true', help='Disable chart')
+    parser.add_argument('--fuzzy', type=int, default=100, help='Fuzzy grouping threshold (0-100)')  # <-- new flag
     args = parser.parse_args()
 
     # Load full DataFrame
@@ -243,8 +283,8 @@ def main():
     else:
         df_filtered = df_filtered[df_filtered['amount'] < 0]
 
-    # Compute totals
-    km = KeywordManager(df_filtered, currency=args.currency)
+    # Compute totals using fuzzy logic
+    km = KeywordManager(df_filtered, currency=args.currency, fuzzy_threshold=args.fuzzy)
     totals = km.run(reverse=args.all)
 
     # Reporter gets full df for insights
@@ -253,5 +293,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
