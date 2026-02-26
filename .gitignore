@@ -1,5 +1,5 @@
 # Custom .gitignore for Python projects
-/csv_input
+/csv_input*
 
 # Byte-compiled / optimized files
 __pycache__/
