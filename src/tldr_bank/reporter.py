@@ -18,7 +18,7 @@ class Reporter:
             self.console.print("No data to display.")
         else:
             data_table = self.totals if self.show_all else self.totals.head(5)
-            table = Table(title="Top Costs")
+            table = Table(title="Top Costs / Income")
             table.add_column("#")
             table.add_column("Thing")
             table.add_column("Total")
@@ -29,18 +29,19 @@ class Reporter:
         # --- Insights ---
         if self.df is not None and not self.df.empty:
             df = self.df
+            filtered = df.copy()  # include both incoming & outgoing for insight
             if self.income_mode:
-                filtered = df[df['amount'] > 0]
+                filtered = filtered[filtered['amount'] > 0]
             else:
-                filtered = df[df['amount'] < 0]
+                filtered = filtered[filtered['amount'] < 0]
 
             if not filtered.empty:
                 months = filtered.groupby(filtered['date'].dt.to_period("M"))['amount'].sum()
                 years = filtered.groupby(filtered['date'].dt.year)['amount'].sum()
-                largest_expense = filtered.loc[filtered['amount'].idxmin() if not self.income_mode else filtered['amount'].idxmax()]
-                smallest_expense = filtered.loc[filtered['amount'].idxmax() if not self.income_mode else filtered['amount'].idxmin()]
-                most_expensive_thing = filtered.groupby('description')['amount'].sum().idxmin() if not self.income_mode else filtered.groupby('description')['amount'].sum().idxmax()
-                cheapest_thing = filtered.groupby('description')['amount'].sum().idxmax() if not self.income_mode else filtered.groupby('description')['amount'].sum().idxmin()
+                largest = filtered.loc[filtered['amount'].idxmax()]
+                smallest = filtered.loc[filtered['amount'].idxmin()]
+                most_expensive_thing = df.groupby('description')['amount'].sum().idxmin() if not self.income_mode else df.groupby('description')['amount'].sum().idxmax()
+                cheapest_thing = df.groupby('description')['amount'].sum().idxmax() if not self.income_mode else df.groupby('description')['amount'].sum().idxmin()
                 most_bought = filtered['description'].value_counts().idxmax()
                 least_bought = filtered['description'].value_counts().idxmin()
 
@@ -51,8 +52,8 @@ class Reporter:
                     self.console.print(f"\nMost Expensive Year: {years.idxmin() if not self.income_mode else years.idxmax()} ({years.min() if not self.income_mode else years.max():.2f})")
                     self.console.print(f"Cheapest Year: {years.idxmax() if not self.income_mode else years.idxmin()} ({years.max() if not self.income_mode else years.min():.2f})")
 
-                self.console.print(f"\nLargest Expense: {largest_expense['description']} ({largest_expense['amount']:.2f})")
-                self.console.print(f"Smallest Expense: {smallest_expense['description']} ({smallest_expense['amount']:.2f})")
+                self.console.print(f"\nLargest Transaction: {largest['description']} ({largest['amount']:.2f})")
+                self.console.print(f"Smallest Transaction: {smallest['description']} ({smallest['amount']:.2f})")
                 self.console.print(f"\nMost Expensive Thing: {most_expensive_thing}")
                 self.console.print(f"Cheapest Thing: {cheapest_thing}")
                 self.console.print(f"Most Bought Thing: {most_bought}")
