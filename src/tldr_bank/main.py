@@ -1,5 +1,3 @@
-# src/tldr_bank/main.py
-
 import argparse
 from .processor import CSVProcessor
 from .keyword_manager import KeywordManager
@@ -14,7 +12,7 @@ def main():
     parser.add_argument('--year', type=int, help='Filter by year')
     parser.add_argument('--income', action='store_true', help='Income mode')
     parser.add_argument('--no-chart', action='store_true', help='Disable chart')
-    parser.add_argument('--fuzzy', type=int, default=82, help='Fuzzy grouping threshold (0-100)')  # <-- new flag
+    parser.add_argument('--fuzzy', type=int, default=90, help='Fuzzy grouping threshold (0-100)')
     args = parser.parse_args()
 
     # Load full DataFrame
@@ -36,11 +34,16 @@ def main():
         df_filtered = df_filtered[df_filtered['amount'] < 0]
 
     # Compute totals using fuzzy logic
-    km = KeywordManager(df_filtered, currency=args.currency, fuzzy_threshold=args.fuzzy)
+    km = KeywordManager(df_filtered, fuzzy_threshold=args.fuzzy)
     totals = km.run(reverse=args.all)
 
-    # Reporter gets full df for insights
-    reporter = Reporter(totals, df=df_full, show_all=args.all, truncate=10, income_mode=args.income)
+    # Add keyword column to df_filtered for interactive inspection
+    df_filtered['keyword'] = df_filtered['description'].apply(km._extract_entity)
+    mapping = km._fuzzy_group(df_filtered['keyword'])
+    df_filtered['keyword'] = df_filtered['keyword'].map(mapping)
+
+    # Reporter gets df_filtered with keyword column
+    reporter = Reporter(totals, df=df_filtered, show_all=args.all, truncate=10, income_mode=args.income)
     reporter.run(no_chart=args.no_chart)
 
 if __name__ == "__main__":
