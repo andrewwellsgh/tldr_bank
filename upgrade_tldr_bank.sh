@@ -1,3 +1,14 @@
+#!/bin/bash
+# ================================================
+# TLDR_BANK Fix & Installer
+# Fixes: chart crash, table + insights display
+# ================================================
+
+echo "Updating tldr_bank files..."
+
+# --- 1️⃣ Update reporter.py ---
+mkdir -p src/tldr_bank
+cat > src/tldr_bank/reporter.py << 'EOF'
 from rich.console import Console
 from rich.table import Table
 import plotext as plt
@@ -64,3 +75,17 @@ class Reporter:
             plt.show()  # ✅ correct method
 
         self.console.print("\nAnd that's your bank - wrapped. 💳")
+EOF
+
+# --- 2️⃣ Update README.md ---
+cat > README.md << 'EOF'
+# TLDR Bank
+
+Terminal-based CLI to summarize and visualize your bank transactions.
+
+## Installation
+
+```bash
+git clone <your_repo>
+cd <your_repo>
+pip install -r requirements.txt

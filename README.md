@@ -1,6 +1,10 @@
-# TL;DR Bank
+# TLDR Bank
 
+Terminal-based CLI to summarize and visualize your bank transactions.
 
-options:
-  -h, --help       show this help message and exit
-  --folder FOLDER  CSV folder path
+## Installation
+
+```bash
+git clone <your_repo>
+cd <your_repo>
+pip install -r requirements.txt
