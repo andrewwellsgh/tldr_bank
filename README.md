@@ -1,5 +1,10 @@
 # TLDR Bank
 
+This readme needs rewriting. please ignore it for now.
+
+
+
+
 **TLDR Bank** is a command-line tool for quickly analyzing and summarizing your personal or business CSV bank transaction files. It cleans, processes, and aggregates your transaction data, generating insightful summaries and charts to understand your spending and income patterns at a glance.
 
 ---
