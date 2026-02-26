@@ -72,7 +72,7 @@ class Reporter:
     def run(self, no_chart=False):
         # --- 1️⃣ Table ---
         data_table = self.totals if self.show_all else self.totals.head(5)
-        table = Table(title="Top Costs / Income")
+        table = Table(title="Top Costs")
         table.add_column("#")
         table.add_column("Thing")
         table.add_column("Total")
