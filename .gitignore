@@ -1,5 +1,10 @@
 # Custom .gitignore for Python projects
 /csv_input*
+exporter.py
+project_export.txt
+setup_tldr_bank.sh
+update_readme.sh
+upgrade_tldr_bank.sh
 
 # Byte-compiled / optimized files
 __pycache__/

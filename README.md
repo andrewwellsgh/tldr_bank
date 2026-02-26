@@ -68,7 +68,7 @@ python -m tldr_bank.main [options]
 | `--year` | Filter transactions by a specific year |
 | `--income` | Analyze income transactions instead of expenses |
 | `--no-chart` | Disable terminal charts |
-| `--fuzzy` | Fuzzy matching threshold for grouping descriptions (0-100, default: 85) |
+| `--fuzzy` | Fuzzy matching threshold for grouping descriptions (0-100, default: 90) |
 
 ### Example
 
@@ -106,4 +106,12 @@ tldr_bank/
 
 ## License
 
-MIT License – free to use a
+Elastic License.
+Play with the source code all you want for your own purposes.
+Ask if you want to make money with it and we will do it together, fairly.
+
+I can't stop you stealing this, but it's not very nice.
+Bad guys all die in a volcano at the end of the movie.
+
+If that's you, you deserve better.
+See license.MD included in root folder for more info.
