@@ -1,0 +1,265 @@
+################################################################################
+# FILE: security.py
+################################################################################
+
+import pandas as pd
+import re
+
+class SecurityCheck:
+    """Robust CSV validator and smart column guesser."""
+
+    required_fields = ['date', 'description', 'amount']
+
+    header_hints = {
+        'date': ['date', 'transactiondate', 'posted'],
+        'description': ['desc', 'description', 'merchant', 'type', 'label'],
+        'amount': ['value', 'amount', 'amt', 'debit', 'credit']
+    }
+
+    def guess_columns(self, df: pd.DataFrame):
+        df_columns = [c.strip() for c in df.columns]
+        mapping = {}
+
+        # --- header hints first ---
+        for field, hints in self.header_hints.items():
+            for hint in hints:
+                for c in df_columns:
+                    if hint.lower() in c.lower():
+                        mapping[field] = c
+                        break
+                if field in mapping:
+                    break
+
+        # --- fallback: sample inspection ---
+        sample = df.head(10)
+        for field in self.required_fields:
+            if field not in mapping:
+                scores = {}
+                for c in df_columns:
+                    col_values = sample[c]
+                    if field == 'date':
+                        scores[c] = col_values.apply(lambda x: pd.notna(pd.to_datetime(x, errors='coerce'))).mean()
+                    elif field == 'amount':
+                        s = col_values.astype(str).str.replace(',','').str.replace(r'[^\d\.-]', '', regex=True)
+                        scores[c] = s.apply(lambda x: bool(re.match(r'^-?\d+(\.\d+)?$', x.strip()))).mean()
+                    elif field == 'description':
+                        scores[c] = col_values.apply(lambda x: isinstance(x,str)).mean()
+                best_col = max(scores, key=scores.get)
+                if scores[best_col] > 0.5:
+                    mapping[field] = best_col
+
+        missing = [f for f in self.required_fields if f not in mapping]
+        if missing:
+            raise ValueError(f"Cannot guess columns for: {missing}")
+
+        return mapping
+
+    def run(self, df: pd.DataFrame) -> pd.DataFrame:
+        mapping = self.guess_columns(df)
+        df = df.rename(columns={v: k for k, v in mapping.items()})
+        df['amount'] = pd.to_numeric(df['amount'].astype(str).str.replace(',','').str.replace(r'[^\d\.-]', '', regex=True), errors='coerce')
+        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        df['description'] = df['description'].fillna('unknown').astype(str)
+        df = df.dropna(subset=['amount','date'])
+        return df
+
+
+################################################################################
+# FILE: __init__.py
+################################################################################
+
+
+
+
+################################################################################
+# FILE: keyword_manager.py
+################################################################################
+
+import pandas as pd
+
+class KeywordCategorizer:
+    def __init__(self, df):
+        self.df = df.copy()
+        self.totals = {}  # keyword -> total amount
+        self.categories_created = []  # list of category names used
+
+    def count_keywords(self):
+        """
+        Count all individual description strings as lowercase, stripped keywords
+        """
+        for desc, amt in zip(self.df['description'], self.df['amount']):
+            key = desc.lower().strip()
+            if key in self.totals:
+                self.totals[key] += amt
+            else:
+                self.totals[key] = amt
+
+    def interactive_merge(self):
+        """
+        Interactive merging of similar descriptions into categories
+        """
+        keys = list(self.totals.keys())
+        i = 0
+        while i < len(keys) - 1:
+            k1, k2 = keys[i], keys[i+1]
+            amt1, amt2 = self.totals[k1], self.totals[k2]
+
+            print(f"\n{k1}: {amt1:.2f}")
+            print(f"{k2}: {amt2:.2f}")
+            choice = input("Combine these? [y/N]: ").strip().lower()
+            if choice == 'y':
+                # show existing categories
+                if self.categories_created:
+                    print("Existing categories:")
+                    for idx, cat in enumerate(self.categories_created, start=1):
+                        print(f"{idx}: {cat}")
+                    cat_choice = input("Select number or enter new category name: ").strip()
+                    if cat_choice.isdigit() and 1 <= int(cat_choice) <= len(self.categories_created):
+                        new_name = self.categories_created[int(cat_choice)-1]
+                    else:
+                        new_name = cat_choice if cat_choice else 'other'
+                else:
+                    new_name = input("Enter a name for the merged category: ").strip() or 'other'
+
+                # update totals and category list
+                self.totals[new_name] = amt1 + amt2
+                if new_name not in self.categories_created:
+                    self.categories_created.append(new_name)
+                del self.totals[k1]
+                del self.totals[k2]
+
+                # rebuild keys and restart loop
+                keys = list(self.totals.keys())
+                i = -1
+            i += 1
+
+    def categorize_unmatched(self):
+        """
+        Prompt user to assign any remaining keywords to categories
+        """
+        for key in list(self.totals.keys()):
+            if key in self.categories_created:
+                continue  # already assigned
+            print(f"\nUnmatched keyword: {key} ({self.totals[key]:.2f})")
+            if self.categories_created:
+                print("Existing categories:")
+                for idx, cat in enumerate(self.categories_created, start=1):
+                    print(f"{idx}: {cat}")
+            cat_choice = input("Select number, type new category, or leave blank for 'other': ").strip()
+            if cat_choice.isdigit() and 1 <= int(cat_choice) <= len(self.categories_created):
+                new_name = self.categories_created[int(cat_choice)-1]
+            else:
+                new_name = cat_choice if cat_choice else 'other'
+            if new_name not in self.categories_created:
+                self.categories_created.append(new_name)
+
+            # merge into chosen category
+            if new_name in self.totals:
+                self.totals[new_name] += self.totals[key]
+            else:
+                self.totals[new_name] = self.totals[key]
+            del self.totals[key]
+
+    def run(self, output_csv=None):
+        self.count_keywords()
+        self.interactive_merge()
+        self.categorize_unmatched()
+
+        # final output
+        print("\nFinal categorized totals:")
+        for cat, amt in self.totals.items():
+            print(f"{cat}: {amt:.2f}")
+
+        # optionally save to CSV
+        if output_csv:
+            df_out = pd.DataFrame([
+                {'category': cat, 'total_amount': amt} for cat, amt in self.totals.items()
+            ])
+            df_out.to_csv(output_csv, index=False)
+            print(f"\nSaved categorized totals to {output_csv}")
+        return self.totals
+
+################################################################################
+# FILE: processor.py
+################################################################################
+
+import os
+import pandas as pd
+from .security import SecurityCheck
+
+class CSVProcessor:
+    def __init__(self, folder='csv_input'):
+        self.folder = folder
+        self.security = SecurityCheck()
+
+    def run(self):
+        all_files = [os.path.join(self.folder, f) for f in os.listdir(self.folder) if f.endswith('.csv')]
+        df_list = []
+        for f in all_files:
+            df = pd.read_csv(f)
+            df = self.security.run(df)
+            df_list.append(df)
+        if df_list:
+            return pd.concat(df_list, ignore_index=True)
+        return pd.DataFrame(columns=['date','description','amount'])
+
+
+################################################################################
+# FILE: lock.py
+################################################################################
+
+from filelock import FileLock
+
+class FileLocker:
+    """Context manager for locking files during processing."""
+
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.lockfile = f"{filepath}.lock"
+
+    def __enter__(self):
+        self.lock = FileLock(self.lockfile)
+        self.lock.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.lock.release()
+
+    def run(self):
+        return self
+
+
+################################################################################
+# FILE: main.py
+################################################################################
+
+import argparse
+from .processor import CSVProcessor
+from .keyword_categorizer import KeywordCategorizer  # assuming you renamed KeywordManager
+from .reporter import Reporter
+
+def main():
+    parser = argparse.ArgumentParser(description="tldr_bank CLI")
+    parser.add_argument('--folder', default='csv_input', help='CSV folder')
+    parser.add_argument('--output', help='Optional CSV file to save results')
+    args = parser.parse_args()
+
+    # Load CSVs
+    processor = CSVProcessor(folder=args.folder)
+    df = processor.run()
+    if df.empty:
+        print("No data found in CSV files.")
+        return
+
+    # Keyword categorization with interactive merging & category suggestion
+    kc = KeywordCategorizer(df)
+    totals = kc.run(output_csv=args.output)  # just pass output_csv, no extra flags
+
+    # Reporting
+    reporter = Reporter(totals)
+    reporter.run()
+
+
+if __name__ == "__main__":
+    main()
+

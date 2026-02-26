@@ -3,7 +3,7 @@ import pandas as pd
 from .security import SecurityCheck
 
 class CSVProcessor:
-    def __init__(self, folder='csv_examples'):
+    def __init__(self, folder='csv_input'):
         self.folder = folder
         self.security = SecurityCheck()
 

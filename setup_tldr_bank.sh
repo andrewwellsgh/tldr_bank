@@ -7,7 +7,7 @@ set -e
 # =============================
 mkdir -p src/tldr_bank
 mkdir -p tests
-mkdir -p csv_examples
+mkdir -p csv_input
 
 # =============================
 # pyproject.toml
@@ -114,7 +114,7 @@ import pandas as pd
 from .security import SecurityCheck
 
 class CSVProcessor:
-    def __init__(self, folder='csv_examples'):
+    def __init__(self, folder='csv_input'):
         self.folder = folder
         self.security = SecurityCheck()
 
@@ -174,7 +174,7 @@ from .reporter import Reporter
 
 def main():
     parser = argparse.ArgumentParser(description="tldr_bank CLI")
-    parser.add_argument('--folder', default='csv_examples', help='CSV folder')
+    parser.add_argument('--folder', default='csv_input', help='CSV folder')
     args = parser.parse_args()
 
     processor = CSVProcessor(folder=args.folder)
@@ -228,4 +228,4 @@ EOF
 # =============================
 echo "Setup complete. Now run:"
 echo "  poetry install"
-echo "  poetry run tldr_bank --folder csv_examples"
+echo "  poetry run tldr_bank --folder csv_input"

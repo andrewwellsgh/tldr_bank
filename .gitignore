@@ -1,5 +1,5 @@
 # Custom .gitignore for Python projects
-/csv_examples
+/csv_input
 
 # Byte-compiled / optimized files
 __pycache__/
@@ -23,8 +23,8 @@ venv/
 Thumbs.db
 
 # CSV examples or other local data
-csv_examples.csv
-/csv_examples/
+csv_input.csv
+/csv_input/
 
 # IDE / editor folders
 .vscode/
