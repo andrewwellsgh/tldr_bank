@@ -17,10 +17,10 @@ class Reporter:
         if self.totals.empty:
             self.console.print("No data to display.")
         else:
-            data_table = self.totals if self.show_all else self.totals.head(5)
-            table = Table(title="Top Costs / Income")
+            data_table = self.totals if self.show_all else self.totals.head(10)
+            table = Table(title="Top Costs (Minus Income)")
             table.add_column("#")
-            table.add_column("Thing")
+            table.add_column("Item")
             table.add_column("Total")
             for i, (k, v) in enumerate(data_table.items(), 1):
                 table.add_row(str(i), k, f"{v:.2f}")
@@ -45,7 +45,7 @@ class Reporter:
             labels = [k[:self.truncate] for k in chart_data.index]
             values = list(chart_data.values)
             plt.bar(labels, values)
-            plt.title("Top 5 Expenses / Income (absolute)")
+            plt.title("Top 5")
             plt.xlabel("Item")
             plt.ylabel("Amount")
             plt.show()
