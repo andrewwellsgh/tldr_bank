@@ -1,223 +1,62 @@
 #!/bin/bash
-# ==================================================================================
-# TLDR Bank Installer / Updater
-# This script installs/updates tldr_bank with full functionality including income + expenses.
-# ==================================================================================
 
-echo "📦 Installing TLDR Bank dependencies with Poetry..."
-poetry install
+# Update TLDR Bank KeywordManager with entity-based grouping
 
-echo "📝 Updating Python source files..."
+FILE="src/tldr_bank/keyword_manager.py"
 
-# SECURITY.PY
-cat > src/tldr_bank/security.py << 'EOF'
+cat > "$FILE" << 'EOF'
 import pandas as pd
+from rapidfuzz import fuzz
 import re
 
-class SecurityCheck:
-    required_fields = ['date', 'description', 'amount']
-    header_hints = {
-        'date': ['date','transactiondate','posted'],
-        'description': ['desc','description','merchant','type','label'],
-        'amount': ['value','amount','amt','debit','credit']
-    }
-    def guess_columns(self, df):
-        df_columns = [c.strip() for c in df.columns]
-        mapping = {}
-        for field,hints in self.header_hints.items():
-            for hint in hints:
-                for c in df_columns:
-                    if hint.lower() in c.lower():
-                        mapping[field] = c
-                        break
-                if field in mapping: break
-        sample = df.head(10)
-        for field in self.required_fields:
-            if field not in mapping:
-                scores={}
-                for c in df_columns:
-                    col_values = sample[c]
-                    if field=='date':
-                        scores[c] = col_values.apply(lambda x: pd.notna(pd.to_datetime(x, errors='coerce'))).mean()
-                    elif field=='amount':
-                        s=col_values.astype(str).str.replace(',','').str.replace(r'[^\d\.-]','',regex=True)
-                        scores[c] = s.apply(lambda x: bool(re.match(r'^-?\d+(\.\d+)?$',x.strip()))).mean()
-                    elif field=='description':
-                        scores[c] = col_values.apply(lambda x: isinstance(x,str)).mean()
-                best_col=max(scores,key=scores.get)
-                if scores[best_col]>0.5:
-                    mapping[field]=best_col
-        missing=[f for f in self.required_fields if f not in mapping]
-        if missing: raise ValueError(f"Cannot guess columns for: {missing}")
-        return mapping
-
-    def run(self, df):
-        mapping = self.guess_columns(df)
-        df = df.rename(columns={v:k for k,v in mapping.items()})
-        df['amount']=pd.to_numeric(df['amount'].astype(str).str.replace(',','').str.replace(r'[^\d\.-]','',regex=True), errors='coerce')
-        df['date']=pd.to_datetime(df['date'], errors='coerce')
-        df['description']=df['description'].fillna('unknown').astype(str)
-        df = df.dropna(subset=['amount','date'])
-        return df
-EOF
-
-# REPORTER.PY
-cat > src/tldr_bank/reporter.py << 'EOF'
-from rich.console import Console
-from rich.table import Table
-import plotext as plt
-import pandas as pd
-
-class Reporter:
-    def __init__(self, totals, df=None, show_all=False, truncate=10, income_mode=False):
-        self.totals = totals
-        self.df = df
-        self.show_all = show_all
-        self.truncate = truncate
-        self.income_mode = income_mode
-        self.console = Console()
-
-    def run(self, no_chart=False):
-        # --- Table ---
-        if self.totals.empty:
-            self.console.print("No data to display.")
-        else:
-            data_table = self.totals if self.show_all else self.totals.head(5)
-            table = Table(title="Top Costs / Income")
-            table.add_column("#")
-            table.add_column("Thing")
-            table.add_column("Total")
-            for i, (k, v) in enumerate(data_table.items(), 1):
-                table.add_row(str(i), k, f"{v:.2f}")
-            self.console.print(table)
-
-        # --- Insights ---
-        if self.df is not None and not self.df.empty:
-            df = self.df
-            filtered = df.copy()  # include both incoming & outgoing for insight
-            if self.income_mode:
-                filtered = filtered[filtered['amount'] > 0]
-            else:
-                filtered = filtered[filtered['amount'] < 0]
-
-            if not filtered.empty:
-                months = filtered.groupby(filtered['date'].dt.to_period("M"))['amount'].sum()
-                years = filtered.groupby(filtered['date'].dt.year)['amount'].sum()
-                largest = filtered.loc[filtered['amount'].idxmax()]
-                smallest = filtered.loc[filtered['amount'].idxmin()]
-                most_expensive_thing = df.groupby('description')['amount'].sum().idxmin() if not self.income_mode else df.groupby('description')['amount'].sum().idxmax()
-                cheapest_thing = df.groupby('description')['amount'].sum().idxmax() if not self.income_mode else df.groupby('description')['amount'].sum().idxmin()
-                most_bought = filtered['description'].value_counts().idxmax()
-                least_bought = filtered['description'].value_counts().idxmin()
-
-                if not months.empty:
-                    self.console.print(f"\nMost Expensive Month: {months.idxmin() if not self.income_mode else months.idxmax()} ({months.min() if not self.income_mode else months.max():.2f})")
-                    self.console.print(f"Cheapest Month: {months.idxmax() if not self.income_mode else months.idxmin()} ({months.max() if not self.income_mode else months.min():.2f})")
-                if not years.empty:
-                    self.console.print(f"\nMost Expensive Year: {years.idxmin() if not self.income_mode else years.idxmax()} ({years.min() if not self.income_mode else years.max():.2f})")
-                    self.console.print(f"Cheapest Year: {years.idxmax() if not self.income_mode else years.idxmin()} ({years.max() if not self.income_mode else years.min():.2f})")
-
-                self.console.print(f"\nLargest Transaction: {largest['description']} ({largest['amount']:.2f})")
-                self.console.print(f"Smallest Transaction: {smallest['description']} ({smallest['amount']:.2f})")
-                self.console.print(f"\nMost Expensive Thing: {most_expensive_thing}")
-                self.console.print(f"Cheapest Thing: {cheapest_thing}")
-                self.console.print(f"Most Bought Thing: {most_bought}")
-                self.console.print(f"Least Bought Thing: {least_bought}")
-
-        # --- Chart ---
-        if not no_chart and not self.totals.empty:
-            chart_data = self.totals.abs().sort_values(ascending=False).head(5)
-            labels = [k[:self.truncate] for k in chart_data.index]
-            values = list(chart_data.values)
-            plt.bar(labels, values)
-            plt.title("Top 5 Expenses / Income (absolute)")
-            plt.xlabel("Item")
-            plt.ylabel("Amount")
-            plt.show()
-
-        self.console.print("\nAnd that's your bank - wrapped. 💳")
-EOF
-
-# KEYWORD_MANAGER.PY
-cat > src/tldr_bank/keyword_manager.py << 'EOF'
-import pandas as pd
-
 class KeywordManager:
-    def __init__(self, df, currency='GBP'):
+    def __init__(self, df, fuzzy_threshold=90):
+        """
+        Args:
+            df (pd.DataFrame): Must contain 'description' and 'amount'
+            fuzzy_threshold (int): 0-100, threshold for fuzzy grouping
+        """
         self.df = df
-        self.currency = currency
+        self.fuzzy_threshold = fuzzy_threshold
+
+    def _extract_entity(self, desc: str) -> str:
+        desc = str(desc).upper()
+        # Remove numeric codes, dates, and generic words
+        desc = re.sub(r'\b\d{1,6}\b', '', desc)
+        desc = re.sub(r'\b\d{1,2}[A-Z]{3}\d{2}\b', '', desc)
+        desc = re.sub(r'\bONLINE|INTERNET|VIA MOBILE|PYMT|GROCERIES|TOPUP|PAYMENT|TRANSFER\b', '', desc)
+        # Split by comma and strip
+        parts = [p.strip() for p in desc.split(',') if p.strip()]
+        if parts:
+            return parts[0]
+        return desc.strip()
+
+    def _fuzzy_group(self, entities):
+        mapping = {}
+        groups = {}
+        for e in entities:
+            found = False
+            for key in groups:
+                if fuzz.token_set_ratio(e, key) >= self.fuzzy_threshold:
+                    groups[key].append(e)
+                    mapping[e] = key
+                    found = True
+                    break
+            if not found:
+                groups[e] = [e]
+                mapping[e] = e
+        return mapping
 
     def run(self, reverse=False):
         df = self.df.copy()
-        df['keyword'] = df['description'].str.lower().str.strip()
+        df['entity'] = df['description'].apply(self._extract_entity)
+
+        # Apply fuzzy grouping to extracted entities
+        mapping = self._fuzzy_group(df['entity'])
+        df['keyword'] = df['entity'].map(mapping)
+
         totals = df.groupby('keyword')['amount'].sum().sort_values(ascending=not reverse)
         return totals
 EOF
 
-# MAIN.PY
-cat > src/tldr_bank/main.py << 'EOF'
-import argparse
-from .processor import CSVProcessor
-from .keyword_manager import KeywordManager
-from .reporter import Reporter
-
-def main():
-    parser = argparse.ArgumentParser(description="tldr_bank CLI")
-    parser.add_argument('--folder', default='csv_input', help='CSV folder')
-    parser.add_argument('--all', action='store_true', help='Show all entries')
-    parser.add_argument('--ignore', action='append', help='Ignore strings', default=[])
-    parser.add_argument('--currency', default='GBP', help='Currency code')
-    parser.add_argument('--year', type=int, help='Filter by year')
-    parser.add_argument('--income', action='store_true', help='Income mode')
-    parser.add_argument('--no-chart', action='store_true', help='Disable chart')
-    args = parser.parse_args()
-
-    df_full = CSVProcessor(folder=args.folder).run()
-
-    df_filtered = df_full.copy()
-    for ignore_str in args.ignore:
-        df_filtered = df_filtered[~df_filtered['description'].str.contains(ignore_str, case=False, na=False)]
-
-    if args.year:
-        df_filtered = df_filtered[df_filtered['date'].dt.year == args.year]
-
-    if args.income:
-        df_filtered = df_filtered[df_filtered['amount'] > 0]
-    else:
-        df_filtered = df_filtered[df_filtered['amount'] < 0]
-
-    km = KeywordManager(df_filtered, currency=args.currency)
-    totals = km.run(reverse=args.all)
-
-    reporter = Reporter(totals, df=df_full, show_all=args.all, truncate=10, income_mode=args.income)
-    reporter.run(no_chart=args.no_chart)
-
-if __name__ == "__main__":
-    main()
-EOF
-
-echo "📄 Updating README.md for Poetry usage..."
-cat > README.md << 'EOF'
-# TLDR Bank
-
-**TLDR Bank** is a terminal CLI to summarize your bank CSVs (expenses & income) with tables, insights, and charts.
-
-## Features
-
-- Aggregates expenses & income by description.
-- Shows top 5 (default) or all (`--all`).
-- Insights include:
-  - Most/Least expensive month & year
-  - Largest/Smallest transactions
-  - Most/Least bought items
-  - Most/Least expensive things
-- ASCII bar charts for top transactions.
-- Ignore strings (`--ignore`), filter by year (`--year`), set currency (`--currency`).
-
-## Installation
-
-```bash
-git clone <repo>
-cd <repo>
-poetry install
-poetry run tldr_bank --help
+echo "KeywordManager has been updated with entity-based grouping."
