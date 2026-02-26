@@ -5,7 +5,7 @@ from .reporter import Reporter
 
 def main():
     parser = argparse.ArgumentParser(description="tldr_bank CLI")
-    parser.add_argument('--folder', default='csv_examples', help='CSV folder')
+    parser.add_argument('--folder', default='csv_input', help='CSV folder')
     args = parser.parse_args()
 
     processor = CSVProcessor(folder=args.folder)
