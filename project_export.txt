@@ -6,63 +6,120 @@ import pandas as pd
 import re
 
 class SecurityCheck:
-    """Robust CSV validator and smart column guesser."""
-
     required_fields = ['date', 'description', 'amount']
-
     header_hints = {
-        'date': ['date', 'transactiondate', 'posted'],
-        'description': ['desc', 'description', 'merchant', 'type', 'label'],
-        'amount': ['value', 'amount', 'amt', 'debit', 'credit']
+        'date': ['date','transactiondate','posted'],
+        'description': ['desc','description','merchant','type','label'],
+        'amount': ['value','amount','amt','debit','credit']
     }
-
-    def guess_columns(self, df: pd.DataFrame):
+    def guess_columns(self, df):
         df_columns = [c.strip() for c in df.columns]
         mapping = {}
-
-        # --- header hints first ---
-        for field, hints in self.header_hints.items():
+        for field,hints in self.header_hints.items():
             for hint in hints:
                 for c in df_columns:
                     if hint.lower() in c.lower():
                         mapping[field] = c
                         break
-                if field in mapping:
-                    break
-
-        # --- fallback: sample inspection ---
+                if field in mapping: break
         sample = df.head(10)
         for field in self.required_fields:
             if field not in mapping:
-                scores = {}
+                scores={}
                 for c in df_columns:
                     col_values = sample[c]
-                    if field == 'date':
+                    if field=='date':
                         scores[c] = col_values.apply(lambda x: pd.notna(pd.to_datetime(x, errors='coerce'))).mean()
-                    elif field == 'amount':
-                        s = col_values.astype(str).str.replace(',','').str.replace(r'[^\d\.-]', '', regex=True)
-                        scores[c] = s.apply(lambda x: bool(re.match(r'^-?\d+(\.\d+)?$', x.strip()))).mean()
-                    elif field == 'description':
+                    elif field=='amount':
+                        s=col_values.astype(str).str.replace(',','').str.replace(r'[^\d\.-]','',regex=True)
+                        scores[c] = s.apply(lambda x: bool(re.match(r'^-?\d+(\.\d+)?$',x.strip()))).mean()
+                    elif field=='description':
                         scores[c] = col_values.apply(lambda x: isinstance(x,str)).mean()
-                best_col = max(scores, key=scores.get)
-                if scores[best_col] > 0.5:
-                    mapping[field] = best_col
-
-        missing = [f for f in self.required_fields if f not in mapping]
-        if missing:
-            raise ValueError(f"Cannot guess columns for: {missing}")
-
+                best_col=max(scores,key=scores.get)
+                if scores[best_col]>0.5:
+                    mapping[field]=best_col
+        missing=[f for f in self.required_fields if f not in mapping]
+        if missing: raise ValueError(f"Cannot guess columns for: {missing}")
         return mapping
 
-    def run(self, df: pd.DataFrame) -> pd.DataFrame:
+    def run(self, df):
         mapping = self.guess_columns(df)
-        df = df.rename(columns={v: k for k, v in mapping.items()})
-        df['amount'] = pd.to_numeric(df['amount'].astype(str).str.replace(',','').str.replace(r'[^\d\.-]', '', regex=True), errors='coerce')
-        df['date'] = pd.to_datetime(df['date'], errors='coerce')
-        df['description'] = df['description'].fillna('unknown').astype(str)
+        df = df.rename(columns={v:k for k,v in mapping.items()})
+        df['amount']=pd.to_numeric(df['amount'].astype(str).str.replace(',','').str.replace(r'[^\d\.-]','',regex=True), errors='coerce')
+        df['date']=pd.to_datetime(df['date'], errors='coerce')
+        df['description']=df['description'].fillna('unknown').astype(str)
         df = df.dropna(subset=['amount','date'])
         return df
 
+
+################################################################################
+# FILE: reporter.py
+################################################################################
+
+from rich.console import Console
+from rich.table import Table
+import plotext as plt
+import pandas as pd
+
+class Reporter:
+    def __init__(self, totals, df=None, show_all=False, truncate=10):
+        self.totals = totals
+        self.df = df  # full transaction DataFrame
+        self.show_all = show_all
+        self.truncate = truncate
+        self.console = Console()
+
+    def run(self, no_chart=False):
+        # --- 1️⃣ Table ---
+        data_table = self.totals if self.show_all else self.totals.head(5)
+        table = Table(title="Top Costs / Income")
+        table.add_column("#")
+        table.add_column("Thing")
+        table.add_column("Total")
+        for i, (k, v) in enumerate(data_table.items(), 1):
+            table.add_row(str(i), k, f"{v:.2f}")
+        self.console.print(table)
+
+        # --- 2️⃣ Insights ---
+        if self.df is not None and not self.df.empty:
+            df = self.df
+            months = df.groupby(df['date'].dt.to_period("M"))['amount'].sum()
+            years = df.groupby(df['date'].dt.year)['amount'].sum()
+            largest = df.loc[df['amount'].idxmax()]
+            smallest = df.loc[df['amount'].idxmin()]
+            most_bought = df['description'].value_counts().idxmax()
+            least_bought = df['description'].value_counts().idxmin()
+            most_expensive_thing = df.groupby('description')['amount'].sum().idxmax()
+            cheapest_thing = df.groupby('description')['amount'].sum().idxmin()
+
+            if not months.empty:
+                self.console.print(f"\nMost Expensive Month: {months.idxmax()} ({months.max():.2f})")
+                self.console.print(f"Cheapest Month: {months.idxmin()} ({months.min():.2f})")
+            if not years.empty:
+                self.console.print(f"\nMost Expensive Year: {years.idxmax()} ({years.max():.2f})")
+                self.console.print(f"Cheapest Year: {years.idxmin()} ({years.min():.2f})")
+
+            self.console.print(f"\nLargest Expense: {largest['description']} ({largest['amount']:.2f})")
+            self.console.print(f"Smallest Expense: {smallest['description']} ({smallest['amount']:.2f})")
+            self.console.print(f"\nMost Expensive Thing: {most_expensive_thing}")
+            self.console.print(f"Cheapest Thing: {cheapest_thing}")
+            self.console.print(f"Most Bought Thing: {most_bought}")
+            self.console.print(f"Least Bought Thing: {least_bought}")
+
+        # --- 3️⃣ Chart ---
+        if not no_chart:
+            chart_data = self.totals.abs().sort_values(ascending=False).head(5)
+            labels = [k[:self.truncate] for k in chart_data.index]
+            values = list(chart_data.values)
+            plt.clt()
+            plt.bar(labels, values)
+            plt.title("Top 5 Expenses / Income (absolute)")
+            plt.xlabel("Item")
+            plt.ylabel("Amount")
+            plt.build()   # ← Build chart without clearing terminal
+            plt.print()   # ← Print inline so table and insights remain visible
+
+        self.console.print("\nAnd that's your bank - wrapped. 💳")
 
 ################################################################################
 # FILE: __init__.py
@@ -77,107 +134,17 @@ class SecurityCheck:
 
 import pandas as pd
 
-class KeywordCategorizer:
-    def __init__(self, df):
-        self.df = df.copy()
-        self.totals = {}  # keyword -> total amount
-        self.categories_created = []  # list of category names used
+class KeywordManager:
+    def __init__(self, df, currency='GBP'):
+        self.df = df
+        self.currency = currency
 
-    def count_keywords(self):
-        """
-        Count all individual description strings as lowercase, stripped keywords
-        """
-        for desc, amt in zip(self.df['description'], self.df['amount']):
-            key = desc.lower().strip()
-            if key in self.totals:
-                self.totals[key] += amt
-            else:
-                self.totals[key] = amt
+    def run(self, reverse=False):
+        df = self.df.copy()
+        df['keyword'] = df['description'].str.lower().str.strip()
+        totals = df.groupby('keyword')['amount'].sum().sort_values(ascending=not reverse)
+        return totals
 
-    def interactive_merge(self):
-        """
-        Interactive merging of similar descriptions into categories
-        """
-        keys = list(self.totals.keys())
-        i = 0
-        while i < len(keys) - 1:
-            k1, k2 = keys[i], keys[i+1]
-            amt1, amt2 = self.totals[k1], self.totals[k2]
-
-            print(f"\n{k1}: {amt1:.2f}")
-            print(f"{k2}: {amt2:.2f}")
-            choice = input("Combine these? [y/N]: ").strip().lower()
-            if choice == 'y':
-                # show existing categories
-                if self.categories_created:
-                    print("Existing categories:")
-                    for idx, cat in enumerate(self.categories_created, start=1):
-                        print(f"{idx}: {cat}")
-                    cat_choice = input("Select number or enter new category name: ").strip()
-                    if cat_choice.isdigit() and 1 <= int(cat_choice) <= len(self.categories_created):
-                        new_name = self.categories_created[int(cat_choice)-1]
-                    else:
-                        new_name = cat_choice if cat_choice else 'other'
-                else:
-                    new_name = input("Enter a name for the merged category: ").strip() or 'other'
-
-                # update totals and category list
-                self.totals[new_name] = amt1 + amt2
-                if new_name not in self.categories_created:
-                    self.categories_created.append(new_name)
-                del self.totals[k1]
-                del self.totals[k2]
-
-                # rebuild keys and restart loop
-                keys = list(self.totals.keys())
-                i = -1
-            i += 1
-
-    def categorize_unmatched(self):
-        """
-        Prompt user to assign any remaining keywords to categories
-        """
-        for key in list(self.totals.keys()):
-            if key in self.categories_created:
-                continue  # already assigned
-            print(f"\nUnmatched keyword: {key} ({self.totals[key]:.2f})")
-            if self.categories_created:
-                print("Existing categories:")
-                for idx, cat in enumerate(self.categories_created, start=1):
-                    print(f"{idx}: {cat}")
-            cat_choice = input("Select number, type new category, or leave blank for 'other': ").strip()
-            if cat_choice.isdigit() and 1 <= int(cat_choice) <= len(self.categories_created):
-                new_name = self.categories_created[int(cat_choice)-1]
-            else:
-                new_name = cat_choice if cat_choice else 'other'
-            if new_name not in self.categories_created:
-                self.categories_created.append(new_name)
-
-            # merge into chosen category
-            if new_name in self.totals:
-                self.totals[new_name] += self.totals[key]
-            else:
-                self.totals[new_name] = self.totals[key]
-            del self.totals[key]
-
-    def run(self, output_csv=None):
-        self.count_keywords()
-        self.interactive_merge()
-        self.categorize_unmatched()
-
-        # final output
-        print("\nFinal categorized totals:")
-        for cat, amt in self.totals.items():
-            print(f"{cat}: {amt:.2f}")
-
-        # optionally save to CSV
-        if output_csv:
-            df_out = pd.DataFrame([
-                {'category': cat, 'total_amount': amt} for cat, amt in self.totals.items()
-            ])
-            df_out.to_csv(output_csv, index=False)
-            print(f"\nSaved categorized totals to {output_csv}")
-        return self.totals
 
 ################################################################################
 # FILE: processor.py
@@ -235,30 +202,45 @@ class FileLocker:
 
 import argparse
 from .processor import CSVProcessor
-from .keyword_categorizer import KeywordCategorizer  # assuming you renamed KeywordManager
+from .keyword_manager import KeywordManager
 from .reporter import Reporter
 
 def main():
     parser = argparse.ArgumentParser(description="tldr_bank CLI")
     parser.add_argument('--folder', default='csv_input', help='CSV folder')
-    parser.add_argument('--output', help='Optional CSV file to save results')
+    parser.add_argument('--all', action='store_true', help='Show all expenses')
+    parser.add_argument('--ignore', action='append', help='Ignore strings', default=[])
+    parser.add_argument('--currency', default='GBP', help='Currency code')
+    parser.add_argument('--year', type=int, help='Filter by year')
+    parser.add_argument('--income', action='store_true', help='Income mode')
+    parser.add_argument('--no-chart', action='store_true', help='Disable chart')
     args = parser.parse_args()
 
-    # Load CSVs
-    processor = CSVProcessor(folder=args.folder)
-    df = processor.run()
-    if df.empty:
-        print("No data found in CSV files.")
-        return
+    # Load full DataFrame
+    df_full = CSVProcessor(folder=args.folder).run()
 
-    # Keyword categorization with interactive merging & category suggestion
-    kc = KeywordCategorizer(df)
-    totals = kc.run(output_csv=args.output)  # just pass output_csv, no extra flags
+    # Apply ignore filters only for totals/chart
+    df_filtered = df_full.copy()
+    for ignore_str in args.ignore:
+        df_filtered = df_filtered[~df_filtered['description'].str.contains(ignore_str, case=False, na=False)]
 
-    # Reporting
-    reporter = Reporter(totals)
-    reporter.run()
+    # Filter by year
+    if args.year:
+        df_filtered = df_filtered[df_filtered['date'].dt.year == args.year]
 
+    # Income or expense
+    if args.income:
+        df_filtered = df_filtered[df_filtered['amount'] > 0]
+    else:
+        df_filtered = df_filtered[df_filtered['amount'] < 0]
+
+    # Compute totals for table/chart
+    km = KeywordManager(df_filtered, currency=args.currency)
+    totals = km.run(reverse=args.all)
+
+    # **Pass full unfiltered df** for insights
+    reporter = Reporter(totals, df=df_full, show_all=args.all, truncate=10)
+    reporter.run(no_chart=args.no_chart)
 
 if __name__ == "__main__":
     main()
