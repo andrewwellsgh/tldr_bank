@@ -38,3 +38,38 @@ def load_group_patterns(settings_file: str = SETTINGS_FILE) -> list[tuple[str, s
                 patterns.append((pattern, label))
 
     return patterns
+
+SPOOF_FILE = os.path.join(
+    os.path.dirname(__file__), "..", "..", ".custom_spoof_settings"
+)
+
+def load_spoof_adjustments(spoof_file: str = SPOOF_FILE) -> dict[str, float]:
+    """
+    Format:
+        GROUP_NAME = +100
+        GROUP_NAME = -50.25
+
+    GROUP_NAME must match the final keyword label (case-insensitive).
+    """
+    adjustments = {}
+
+    if not os.path.exists(spoof_file):
+        return adjustments
+
+    with open(spoof_file, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" not in line:
+                continue
+
+            group, value = [p.strip() for p in line.split("=", 1)]
+
+            try:
+                adjustments[group.upper()] = float(value)
+            except ValueError:
+                continue
+
+    return adjustments
+

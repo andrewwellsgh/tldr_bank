@@ -37,10 +37,31 @@ This readme needs rewriting. please ignore it for now.
 - **Custom Groups**
 Add one word or phrase per line to /.custom_group_settings . Any transaction containing that string will be grouped under that label."
 
-# Group Settings File Usage.
-#
-# One line per group, format: "keyword1 keyword2 ... = GROUP_NAME"
-# No GROUP_NAME means the first keyword is used as the group name.
+Usage (in /.custom_group_settings)
+One line per group, format: keyword1 keyword2 ... = GROUP_NAME
+No GROUP_NAME means the first keyword is used as the group name.
+
+- **Spoof Amounts**
+You can spoof amounts on to any group, either one you have created or the program has.
+Note: Use the label, not the pattern.
+
+bob = DAD
+use
+DAD = +10
+not
+bob = +10
+
+Equally, use the output of the program itself to create more of these.
+Don't try and guess it yourself from your CSV.
+
+Usage (in /.custom_spoof_settings)
+GROUP_NAME = +NUMBER
+GROUP_NAME = -NUMBER
+
+e.g
+RENT = +200
+FOOD = -183
+
 
 ---
 

@@ -1,6 +1,8 @@
+import pandas as pd
 import pytest
 
 from src.tldr_bank.settings import load_group_patterns
+from src.tldr_bank.settings import load_spoof_adjustments
 
 
 @pytest.fixture
@@ -64,3 +66,58 @@ def test_patterns_are_uppercased(settings_file):
 
 def test_empty_pattern_after_stripping_skipped(settings_file):
     assert load_group_patterns(settings_file("& = SOMETHING\n")) == []
+
+def test_load_spoof_adjustments_basic(tmp_path):
+    file = tmp_path / "spoof.txt"
+    file.write_text("""
+    PARENTS = +200
+    AMAZON = -50.5
+    # comment line
+    INVALID LINE
+    WELLS = 100
+    """)
+    
+    adjustments = load_spoof_adjustments(str(file))
+    
+    assert adjustments["PARENTS"] == 200
+    assert adjustments["AMAZON"] == -50.5
+    assert adjustments["WELLS"] == 100
+    # lines without "=" are ignored
+    assert "INVALID LINE" not in adjustments
+
+def test_load_spoof_adjustments_empty_or_missing(tmp_path):
+    file = tmp_path / "empty.txt"
+    file.write_text("")
+    adjustments = load_spoof_adjustments(str(file))
+    assert adjustments == {}
+
+    # missing file
+    adjustments2 = load_spoof_adjustments(str(tmp_path / "nonexistent.txt"))
+    assert adjustments2 == {}
+
+def test_apply_spoof_adjustments(tmp_path):
+    totals = pd.Series({
+        "PARENTS": -1500.0,
+        "AMAZON": -300.0
+    })
+
+    # Create a spoof file
+    file = tmp_path / "spoof.txt"
+    file.write_text("""
+    PARENTS = +200
+    AMAZON = -50
+    NEW_GROUP = +500
+    """)
+
+    spoofs = load_spoof_adjustments(str(file))
+
+    # Apply adjustments
+    for group, adjustment in spoofs.items():
+        if group in totals.index:
+            totals.loc[group] += adjustment
+        else:
+            totals.loc[group] = adjustment
+
+    assert totals["PARENTS"] == -1300  # -1500 + 200
+    assert totals["AMAZON"] == -350    # -300 + -50
+    assert totals["NEW_GROUP"] == 500  # added new group
