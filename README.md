@@ -2,6 +2,7 @@
 
 This readme needs rewriting. please ignore it for now.
 
+! Problem: Negative Transactions not printing when in --all mode
 
 
 
@@ -32,6 +33,14 @@ This readme needs rewriting. please ignore it for now.
 
 - **Safe File Handling**  
   Supports file locking to prevent simultaneous edits during processing.
+
+- **Custom Groups**
+Add one word or phrase per line to /.custom_group_settings . Any transaction containing that string will be grouped under that label."
+
+# Group Settings File Usage.
+#
+# One line per group, format: "keyword1 keyword2 ... = GROUP_NAME"
+# No GROUP_NAME means the first keyword is used as the group name.
 
 ---
 
