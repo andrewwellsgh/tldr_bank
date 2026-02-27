@@ -35,7 +35,7 @@ def main():
 
     # Compute totals using fuzzy logic
     km = KeywordManager(df_filtered, fuzzy_threshold=args.fuzzy)
-    totals = km.run(reverse=args.all)
+    totals = km.run(reverse=args.all, income_mode=args.income)
 
     # Add keyword column to df_filtered for interactive inspection
     df_filtered['keyword'] = df_filtered['description'].apply(km._extract_entity)

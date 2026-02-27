@@ -48,14 +48,16 @@ class KeywordManager:
                 mapping[e] = e
         return mapping
 
-    def run(self, reverse=False):
+    def run(self, reverse=False, income_mode=False):
         df = self.df.copy()
         df['entity'] = df['description'].apply(self._extract_entity)
-
-        # Apply fuzzy grouping to extracted entities
         mapping = self._fuzzy_group(df['entity'])
         df['keyword'] = df['entity'].map(mapping)
 
-        totals = df.groupby('keyword')['amount'].sum().sort_values(ascending=not reverse)
+        if income_mode:
+            totals = df.groupby('keyword')['amount'].sum().sort_values(ascending=reverse)
+        else:
+            totals = df.groupby('keyword')['amount'].sum().sort_values(ascending=not reverse)
+
         return totals
 
