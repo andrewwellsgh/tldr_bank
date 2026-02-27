@@ -89,6 +89,13 @@ class Reporter:
 
             keyword = list(self.totals.index)[int(choice) - 1]
             transactions = self.df[self.df["keyword"] == keyword].sort_values("date")
+
             print(f"\nTransactions for '{keyword}' ({len(transactions)} rows):")
+
             for _, row in transactions.iterrows():
-                print(f"  {row['date'].date()}  |  {row['description']:<50}  |  {row['amount']:>10.2f}")
+                desc = row["description"]
+                max_len = 50
+                if len(desc) > max_len:
+                    desc = desc[: max_len - 3] + "..."
+
+                print(f"  {row['date'].date()}  |  {desc:<50}  |  {row['amount']:>10.2f}")

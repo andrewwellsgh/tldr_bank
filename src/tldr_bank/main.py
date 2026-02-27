@@ -3,7 +3,7 @@ import argparse
 from .keyword_manager import KeywordManager
 from .processor import CSVProcessor
 from .reporter import Reporter
-from .settings import load_group_patterns
+from .settings import load_group_patterns, load_spoof_adjustments
 
 
 def _apply_patterns(entity: str, patterns: list[tuple[str, str]]) -> str:
@@ -55,9 +55,23 @@ def main() -> None:
         reverse=args.all, income_mode=args.income, net_mode=args.net
     )
 
+    # --- Apply spoof adjustments ---
+    spoofs = load_spoof_adjustments()
+    for group, adjustment in spoofs.items():
+        if group in totals.index:
+            totals.loc[group] += adjustment
+        else:
+            totals.loc[group] = adjustment  # allow spoofing a group with no real transactions
+
+    # --- Filter near-zero totals if net mode ---
     if args.net:
-        # Drop noise (near-zero net), but keep both positive AND negative groups
         totals = totals[totals.abs() >= 0.01]
+
+    # --- Re-sort totals according to display rules ---
+    if args.net or args.income:
+        totals = totals.sort_values(ascending=args.all)
+    else:
+        totals = totals.sort_values(ascending=not args.all)
 
     # --- Re-label the full DataFrame for drill-down inspection ---
     patterns = load_group_patterns()
