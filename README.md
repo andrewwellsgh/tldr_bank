@@ -35,6 +35,9 @@ This readme needs rewriting. please ignore it for now.
   Supports file locking to prevent simultaneous edits during processing.
 
 - **Custom Groups**
+On Command line in project root:
+touch .custom_group_settings
+
 Add one word or phrase per line to /.custom_group_settings . Any transaction containing that string will be grouped under that label."
 
 Usage (in /.custom_group_settings)
@@ -42,6 +45,10 @@ One line per group, format: keyword1 keyword2 ... = GROUP_NAME
 No GROUP_NAME means the first keyword is used as the group name.
 
 - **Spoof Amounts**
+
+On Command line in project root:
+touch .custom_spoof_settings
+
 You can spoof amounts on to any group, either one you have created or the program has.
 Note: Use the label, not the pattern.
 
@@ -104,6 +111,7 @@ python -m tldr_bank.main [options]
 | `--income` | Analyze income transactions instead of expenses |
 | `--no-chart` | Disable terminal charts |
 | `--fuzzy` | Fuzzy matching threshold for grouping descriptions (0-100, default: 90) |
+| `--net` | Shows each entry ordered by all it's transactions, both in and out |
 
 ### Example
 
@@ -126,6 +134,7 @@ tldr_bank/
 ├── keyword_manager.py # Groups transaction descriptions and aggregates totals
 ├── reporter.py        # Generates tables, charts, and insights
 ├── lock.py            # File locking utility
+├── settings.py        # Runs /.custom_group_settings and /.custom_spoof_settings
 └── __init__.py
 ```
 
