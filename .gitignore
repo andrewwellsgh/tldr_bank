@@ -1,11 +1,9 @@
 # Custom .gitignore for Python projects
 .custom_group_settings
 /csv_input*
-exporter.py
 project_export.txt
-setup_tldr_bank.sh
-update_readme.sh
-upgrade_tldr_bank.sh
+export_project.sh
+install_updates.sh
 
 
 # Byte-compiled / optimized files

@@ -1,19 +1,23 @@
 from filelock import FileLock
 
+
 class FileLocker:
-    """Context manager for locking files during processing."""
+    """Context manager that holds an exclusive file lock for the duration of a block.
 
-    def __init__(self, filepath):
+    Usage::
+
+        with FileLocker("myfile.csv"):
+            # exclusive access guaranteed here
+            process(file)
+    """
+
+    def __init__(self, filepath: str):
         self.filepath = filepath
-        self.lockfile = f"{filepath}.lock"
+        self._lock = FileLock(f"{filepath}.lock")
 
-    def __enter__(self):
-        self.lock = FileLock(self.lockfile)
-        self.lock.acquire()
+    def __enter__(self) -> "FileLocker":
+        self._lock.acquire()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.lock.release()
-
-    def run(self):
-        return self
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self._lock.release()
