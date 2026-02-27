@@ -41,7 +41,7 @@ def main():
     km = KeywordManager(df_filtered, fuzzy_threshold=args.fuzzy)
     totals, df_labelled = km.run(reverse=args.all, income_mode=args.income, net_mode=args.net)
     if args.net:
-        totals = totals[totals >= 0.01]
+        totals = totals[totals.abs() >= 0.01]
 
     # Apply same keyword mapping to full df for inspection
     patterns = load_group_patterns()
