@@ -5,7 +5,7 @@
 project_export.txt
 export_project.sh
 install_updates.sh
-
+landlord_payments.txt
 
 # Byte-compiled / optimized files
 __pycache__/
@@ -31,3 +31,6 @@ Thumbs.db
 # IDE / editor folders
 .vscode/
 .idea/
+
+# Placeholder Files
+!csv_input/.gitkeep
