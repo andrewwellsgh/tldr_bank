@@ -4,12 +4,13 @@ import plotext as plt
 import pandas as pd
 
 class Reporter:
-    def __init__(self, totals, df=None, show_all=False, truncate=10, income_mode=False):
+    def __init__(self, totals, df=None, show_all=False, truncate=10, income_mode=False, net_mode=False):
         self.totals = totals
         self.df = df
         self.show_all = show_all
         self.truncate = truncate
         self.income_mode = income_mode
+        self.net_mode = net_mode
         self.console = Console()
 
     def run(self, no_chart=False):
@@ -18,7 +19,13 @@ class Reporter:
             self.console.print("No data to display.")
         else:
             data_table = self.totals if self.show_all else self.totals.head(10)
-            table = Table(title="Top Costs (Minus Income)")
+            if self.income_mode:
+                title = "Top Income Sources"
+            elif self.net_mode:
+                title = "Top Items by Net Value"
+            else:
+                title = "Top Costs"
+            table = Table(title=title)
             table.add_column("#")
             table.add_column("Item")
             table.add_column("Total")
@@ -26,22 +33,12 @@ class Reporter:
                 table.add_row(str(i), k, f"{v:.2f}")
             self.console.print(table)
 
-        # --- Insights ---
-        if self.df is not None and not self.df.empty:
-            df = self.df
-            filtered = df.copy()
-            if self.income_mode:
-                filtered = filtered[filtered['amount'] > 0]
-            else:
-                filtered = filtered[filtered['amount'] < 0]
-
-            if not filtered.empty:
-                # Your existing insights code here...
-                pass
-
         # --- Chart ---
         if not no_chart and not self.totals.empty:
-            chart_data = self.totals.abs().sort_values(ascending=False).head(5)
+            if self.net_mode or self.income_mode:
+                chart_data = self.totals.sort_values(ascending=False).head(5)
+            else:
+                chart_data = self.totals.abs().sort_values(ascending=False).head(5)
             labels = [k[:self.truncate] for k in chart_data.index]
             values = list(chart_data.values)
             plt.bar(labels, values)
@@ -62,7 +59,7 @@ class Reporter:
                 idx = int(choice) - 1
                 keyword = list(self.totals.index)[idx]
                 print(f"\nTransactions for '{keyword}':")
-                transactions = self.df[self.df['keyword'] == keyword]
+                transactions = self.df[self.df['keyword'] == keyword].sort_values('date')
                 for _, row in transactions.iterrows():
                     print(f"{row['date'].date()} | {row['description']} | {row['amount']:.2f}")
 
