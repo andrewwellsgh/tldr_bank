@@ -3,7 +3,7 @@ by Andy
 
 "The car built for Homer"
 
-See where your money really goes. Trades you any CSV(s) of your bankroll for a clear picture on what you spent - or who paid you. Can order by in, out or net per merchant/person/custom group. Features editable auto "Fuzzy Logic" grouping, custom grouping and spoofing. I needed this myself -It truly is "The car built for Homer." Enjoy.
+"See where your money really goes. Trades you any CSV(s) of your bankroll for a clear picture on what you spent - or who paid you. Can order by in, out or net per merchant/person/custom group. Features editable auto "Fuzzy Logic" grouping, custom grouping and spoofing. I needed this myself - It truly is "The car built for Homer." Enjoy." - Andy
 
 **TLDR Bank** is a command-line tool for quickly analyzing and summarizing your personal or business CSV bank transaction files. It cleans, processes, and aggregates your transaction data, generating insightful summaries and charts to understand your spending and income patterns at a glance.
 
