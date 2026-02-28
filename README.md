@@ -61,7 +61,7 @@ It is designed to work with anything that looks like a Bank formatted CSV.
   You can spoof amounts onto any group, either one you have created or the program has.
   Note: Use the label, not the pattern.
 
-# Example of spoofing a specific transaction group
+### Example of spoofing a specific transaction group
   ```
   bob = DAD
   use
