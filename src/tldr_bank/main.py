@@ -84,6 +84,12 @@ def main() -> None:
         else:
             totals.loc[group] = adjustment
 
+    # Re-sort totals after spoof adjustments
+    if args.income or args.net:
+        totals = totals.sort_values(ascending=False) if args.income else totals.sort_values()
+    else:
+        totals = totals.sort_values()
+
     # --- Filter totals and df_full for hidden groups ---
     if hidden_groups:
         totals = totals.loc[~totals.index.map(str).str.upper().isin(hidden_groups)] if not totals.empty else totals
