@@ -87,11 +87,11 @@ It is designed to work with anything that looks like a Bank formatted CSV.
   ...
   On command line in project root:
   ```
-  touch .hide
-  open .hide
+  touch .hide_custom_settings
+  open .hide_custom_settings
   ```
 
-  You can prevent certain merchants or groups from ever appearing in the output by listing them in a `.hide` file. The program automatically uppercases entries, so you don’t need to worry about case.
+  You can prevent certain merchants or groups from ever appearing in the output by listing them in a `.hide_custom_settings` file. The program automatically uppercases entries, so you don’t need to worry about case.
 
   ```
   ANDY
@@ -103,7 +103,7 @@ It is designed to work with anything that looks like a Bank formatted CSV.
 
   Equally, you can use the output of the program itself to discover groups you want to hide for cleaner reporting.
 
-  Usage (in `.hide` file)
+  Usage (in `.hide_custom_settings` file)
 
   ```
   GROUP_NAME
@@ -114,9 +114,16 @@ It is designed to work with anything that looks like a Bank formatted CSV.
   AMAZON
   ```
 
-- Simply add one group per line.  
-- Blank lines and lines starting with `#` are ignored.  
-- The hide feature works in combination with patterns and fuzzy grouping, so you can hide both raw me
+  - Simply add one group per line.  
+  - Blank lines and lines starting with `#` are ignored.  
+  - The hide feature works in combination with patterns and fuzzy grouping, so you can hide both raw me
+
+### Saving your settings
+  - Use the provided settings folder to store different sets of .custom_group_settings, .custom_spoof_settings and .hide_custom_settings files.
+
+
+### Saving your CSVs
+  - Use the csv_store file to store CSVs. These do not get output. To use them, copy or move them to the csv_input folder. You can move any example csvs in and out as needed. The program is provided with an example csv or two, to get you going.
 
 ---
 
