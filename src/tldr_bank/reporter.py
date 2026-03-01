@@ -63,8 +63,10 @@ class Reporter:
             return
 
         # Pick top 5 by absolute value
-        top5_idx = self.totals.abs().sort_values(ascending=False).head(5).index
-        chart_data = self.totals.loc[top5_idx]
+        data = self.totals if self.show_all else self.totals.head(10)
+        chart_data = data.head(5)  # take top 5 exactly as table
+        labels = [k[: self.truncate] for k in chart_data.index]
+        values = list(chart_data.abs()) # absolute value ensures bars are upward
 
         # For display, take absolute value (bars always upward)
         labels = [k[: self.truncate] for k in chart_data.index]

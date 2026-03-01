@@ -1,10 +1,8 @@
 import re
-
 import pandas as pd
-from rapidfuzz import fuzz
+from rapidfuzz import fuzz, process
 
 from .settings import load_group_patterns
-
 
 class KeywordManager:
     """Groups transaction descriptions into labelled keywords and sums amounts.
@@ -50,23 +48,29 @@ class KeywordManager:
         return candidate
 
     def _fuzzy_group(self, entities: list[str]) -> dict[str, str]:
-        """Map each entity to a canonical group key using fuzzy matching."""
+        """Map each entity to a canonical group key using optimized fuzzy matching."""
         mapping: dict[str, str] = {}
-        groups: dict[str, list[str]] = {}
+        groups: set[str] = set()  # stores canonical group names
 
         for entity in entities:
             if not entity:
                 continue
-            matched = False
-            for key in groups:
-                if fuzz.token_set_ratio(entity, key) >= self.fuzzy_threshold:
-                    groups[key].append(entity)
-                    mapping[entity] = key
-                    matched = True
-                    break
-            if not matched:
-                groups[entity] = [entity]
+
+            # Find the best matching existing group above threshold
+            match = process.extractOne(
+                entity,
+                groups,
+                scorer=fuzz.token_set_ratio,
+                score_cutoff=self.fuzzy_threshold
+            )
+
+            if match:
+                # match[0] is the matched group
+                mapping[entity] = match[0]
+            else:
+                # no match -> create new group
                 mapping[entity] = entity
+                groups.add(entity)
 
         return mapping
 
