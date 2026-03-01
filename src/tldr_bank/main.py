@@ -80,8 +80,9 @@ def main() -> None:
 
     # --- Filter totals and df_full for hidden groups ---
     if hidden_groups:
-        totals = totals[~totals.index.str.upper().isin(hidden_groups)]
-        df_full = df_full[~df_full["keyword"].str.upper().isin(hidden_groups)]
+        totals = totals.loc[~totals.index.map(str).str.upper().isin(hidden_groups)] if not totals.empty else totals
+        df_full = df_full.loc[~df_full["keyword"].astype(str).str.upper().isin(hidden_groups)] if not df_full.empty else df_full
+        
 
     # --- Filter near-zero totals if net mode ---
     if args.net:
