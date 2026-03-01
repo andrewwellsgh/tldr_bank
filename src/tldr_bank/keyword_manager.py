@@ -71,19 +71,12 @@ class KeywordManager:
         return mapping
 
     def run(
-        self, reverse: bool = False, income_mode: bool = False, net_mode: bool = False
+        self,
+        income_mode: bool = False,
+        net_mode: bool = False,
     ) -> tuple[pd.Series, pd.DataFrame]:
-        """Return (totals Series, labelled DataFrame).
+        """Return (totals Series, labelled DataFrame)."""
 
-        Args:
-            reverse:     Reverse the default sort order.
-            income_mode: Sort highest income first (ascending=False by default).
-            net_mode:    Sort by net value (same ordering as income_mode).
-
-        Returns:
-            totals:      pd.Series indexed by keyword, values are summed amounts.
-            df:          Copy of input DataFrame with 'entity' and 'keyword' columns.
-        """
         df = self.df.copy()
         df["entity"] = df["description"].apply(self._extract_entity)
 
@@ -104,9 +97,12 @@ class KeywordManager:
 
         totals = df.groupby("keyword")["amount"].sum()
 
-        if net_mode or income_mode:
-            totals = totals.sort_values(ascending=reverse)
+        # Sorting rules
+        if income_mode or net_mode:
+            # highest first
+            totals = totals.sort_values(ascending=False)
         else:
-            totals = totals.sort_values(ascending=not reverse)
+            # most negative first
+            totals = totals.sort_values()
 
         return totals, df
