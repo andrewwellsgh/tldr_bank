@@ -1,6 +1,7 @@
 # Custom .gitignore for Python projects
 .custom_group_settings
 .custom_spoof_settings
+.hide_custom_settings
 /csv_input/*
 project_export.txt
 export_project.sh
@@ -8,9 +9,13 @@ install_updates.sh
 landlord_payments.txt
 bundle_code.sh
 combined_code.txt
+/settings/*
+/csv_store/*
 
 # Placeholder Files
 !csv_input/.gitkeep
+!settings/.gitkeep
+!csv_store/.gitkeep
 
 # Byte-compiled / optimized files
 __pycache__/
