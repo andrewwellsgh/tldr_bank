@@ -4,9 +4,7 @@ by Andy
 
 "The car built for Homer"
 
-
 "See where your money really goes. Trades you any CSV(s) of your bankroll for a clear picture on what you spent - or who paid you. Can order by in, out or net per merchant/person/custom group. Features editable auto "Fuzzy Logic" grouping, custom grouping and spoofing. I needed this myself - It truly is the car built for Homer. Enjoy." - Andy
-
 
 **TLDR Bank** is a command-line tool for quickly analyzing and summarizing your personal or business CSV bank transaction files. It cleans, processes, and aggregates your transaction data, generating insightful summaries and charts to understand your spending and income patterns at a glance.
 
@@ -64,7 +62,7 @@ It is designed to work with anything that looks like a Bank formatted CSV.
   You can spoof amounts onto any group, either one you have created or the program has.
   Note: Use the label, not the pattern.
 
-# Example of spoofing a specific transaction group
+### Example of spoofing a specific transaction group
   ```
   bob = DAD
   use
@@ -85,6 +83,40 @@ It is designed to work with anything that looks like a Bank formatted CSV.
   FOOD = -183
   ```
 
+  ### Hiding Specific Transaction Groups
+  ...
+  On command line in project root:
+  ```
+  touch .hide
+  open .hide
+  ```
+
+  You can prevent certain merchants or groups from ever appearing in the output by listing them in a `.hide` file. The program automatically uppercases entries, so you don’t need to worry about case.
+
+  ```
+  ANDY
+  AMAZON
+  ```
+
+  - All transactions that resolve to `ANDY` or `AMAZON` (after pattern matching and fuzzy grouping) will be **excluded** from the totals and detailed DataFrame. (That's the graph.)
+  - Hide rules **override any spoof adjustments**, so even if a hidden group has a spoof applied, it will be ignored.  
+
+  Equally, you can use the output of the program itself to discover groups you want to hide for cleaner reporting.
+
+  Usage (in `.hide` file)
+
+  ```
+  GROUP_NAME
+  ANOTHER_GROUP
+
+  # e.g.
+  ANDY
+  AMAZON
+  ```
+
+- Simply add one group per line.  
+- Blank lines and lines starting with `#` are ignored.  
+- The hide feature works in combination with patterns and fuzzy grouping, so you can hide both raw me
 
 ---
 
