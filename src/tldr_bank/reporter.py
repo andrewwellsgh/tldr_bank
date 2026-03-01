@@ -59,12 +59,18 @@ class Reporter:
         self.console.print(table)
 
     def _render_chart(self) -> None:
-        """Render a vertical bar chart that grows from bottom to top, matching table order."""
+        """Render a vertical bar chart that grows from bottom to top, always showing top 5 totals."""
         if self.totals.empty:
             return
 
-        # Take top 5 items exactly as in the table
-        chart_data = self.totals.head(5)
+        # Pick the top 5 by absolute value if net/cost mode, or by value if income mode
+        if self.net_mode or not self.income_mode:
+            chart_data = self.totals.abs().sort_values(ascending=False).head(5)
+        else:
+            chart_data = self.totals.sort_values(ascending=False).head(5)
+
+        # Preserve original sign for display
+        chart_data = self.totals.loc[chart_data.index]
 
         labels = [k[: self.truncate] for k in chart_data.index]
         values = list(chart_data.values)
