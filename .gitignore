@@ -6,6 +6,8 @@ project_export.txt
 export_project.sh
 install_updates.sh
 landlord_payments.txt
+bundle_code.sh
+combined_code.txt
 
 # Placeholder Files
 !csv_input/.gitkeep

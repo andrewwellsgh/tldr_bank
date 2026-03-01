@@ -82,6 +82,40 @@ It is designed to work with anything that looks like a Bank formatted CSV.
   FOOD = -183
   ```
 
+  ### Hiding Specific Transaction Groups
+  ...
+  On command line in project root:
+  ```
+  touch .hide
+  open .hide
+  ```
+
+  You can prevent certain merchants or groups from ever appearing in the output by listing them in a `.hide` file. The program automatically uppercases entries, so you don’t need to worry about case.
+
+  ```
+  ANDY
+  AMAZON
+  ```
+
+  - All transactions that resolve to `ANDY` or `AMAZON` (after pattern matching and fuzzy grouping) will be **excluded** from the totals and detailed DataFrame. (That's the graph.)
+  - Hide rules **override any spoof adjustments**, so even if a hidden group has a spoof applied, it will be ignored.  
+
+  Equally, you can use the output of the program itself to discover groups you want to hide for cleaner reporting.
+
+  Usage (in `.hide` file)
+
+  ```
+  GROUP_NAME
+  ANOTHER_GROUP
+
+  # e.g.
+  ANDY
+  AMAZON
+  ```
+
+- Simply add one group per line.  
+- Blank lines and lines starting with `#` are ignored.  
+- The hide feature works in combination with patterns and fuzzy grouping, so you can hide both raw me
 
 ---
 

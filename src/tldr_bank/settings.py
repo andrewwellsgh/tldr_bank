@@ -43,6 +43,10 @@ SPOOF_FILE = os.path.join(
     os.path.dirname(__file__), "..", "..", ".custom_spoof_settings"
 )
 
+HIDE_FILE = os.path.join(
+    os.path.dirname(__file__), "..", "..", ".hide"
+)
+
 def load_spoof_adjustments(spoof_file: str = SPOOF_FILE) -> dict[str, float]:
     """
     Format:
@@ -72,4 +76,27 @@ def load_spoof_adjustments(spoof_file: str = SPOOF_FILE) -> dict[str, float]:
                 continue
 
     return adjustments
+
+def load_hidden_groups(hide_file: str = HIDE_FILE) -> set[str]:
+    """
+    Format:
+        GROUP_NAME
+        ANOTHER_GROUP
+        # comments allowed
+
+    GROUP_NAME must match the final keyword label (case-insensitive).
+    """
+    hidden = set()
+
+    if not os.path.exists(hide_file):
+        return hidden
+
+    with open(hide_file, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            hidden.add(line.upper())
+
+    return hidden
 

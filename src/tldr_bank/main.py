@@ -1,9 +1,12 @@
 import argparse
-
-from .keyword_manager import KeywordManager
-from .processor import CSVProcessor
-from .reporter import Reporter
-from .settings import load_group_patterns, load_spoof_adjustments
+from src.tldr_bank.keyword_manager import KeywordManager
+from src.tldr_bank.processor import CSVProcessor
+from src.tldr_bank.reporter import Reporter
+from src.tldr_bank.settings import (
+    load_group_patterns,
+    load_spoof_adjustments,
+    load_hidden_groups,
+)
 
 
 def _apply_patterns(entity: str, patterns: list[tuple[str, str]]) -> str:
@@ -31,10 +34,10 @@ def main() -> None:
                         help="Net mode: show income minus expenses per group")
     args = parser.parse_args()
 
-    # --- Load & filter ---
+    # --- Load & filter CSVs ---
     df_full = CSVProcessor(folder=args.folder).run()
-
     df_filtered = df_full.copy()
+
     for ignore_str in args.ignore:
         df_filtered = df_filtered[
             ~df_filtered["description"].str.contains(ignore_str, case=False, na=False)
@@ -55,13 +58,30 @@ def main() -> None:
         reverse=args.all, income_mode=args.income, net_mode=args.net
     )
 
-    # --- Apply spoof adjustments ---
+    # --- Map entities to keywords for later filtering ---
+    patterns = load_group_patterns()
+    entity_to_keyword = dict(zip(df_labelled["entity"], df_labelled["keyword"]))
+    df_full["entity"] = df_full["description"].apply(km._extract_entity)
+    df_full["entity"] = df_full["entity"].apply(lambda e: _apply_patterns(e, patterns))
+    df_full["keyword"] = df_full["entity"].map(entity_to_keyword).fillna(df_full["entity"])
+
+    # --- Load hidden groups ---
+    hidden_groups = load_hidden_groups()  # set of uppercase names
+
+    # --- Apply spoof adjustments, skipping hidden groups ---
     spoofs = load_spoof_adjustments()
     for group, adjustment in spoofs.items():
+        if group.upper() in hidden_groups:
+            continue
         if group in totals.index:
             totals.loc[group] += adjustment
         else:
-            totals.loc[group] = adjustment  # allow spoofing a group with no real transactions
+            totals.loc[group] = adjustment
+
+    # --- Filter totals and df_full for hidden groups ---
+    if hidden_groups:
+        totals = totals[~totals.index.str.upper().isin(hidden_groups)]
+        df_full = df_full[~df_full["keyword"].str.upper().isin(hidden_groups)]
 
     # --- Filter near-zero totals if net mode ---
     if args.net:
@@ -72,14 +92,6 @@ def main() -> None:
         totals = totals.sort_values(ascending=args.all)
     else:
         totals = totals.sort_values(ascending=not args.all)
-
-    # --- Re-label the full DataFrame for drill-down inspection ---
-    patterns = load_group_patterns()
-    entity_to_keyword = dict(zip(df_labelled["entity"], df_labelled["keyword"]))
-
-    df_full["entity"] = df_full["description"].apply(km._extract_entity)
-    df_full["entity"] = df_full["entity"].apply(lambda e: _apply_patterns(e, patterns))
-    df_full["keyword"] = df_full["entity"].map(entity_to_keyword).fillna(df_full["entity"])
 
     # --- Report ---
     reporter = Reporter(
