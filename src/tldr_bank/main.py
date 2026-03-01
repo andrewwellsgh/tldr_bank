@@ -55,12 +55,18 @@ def main() -> None:
     # --- Compute keyword totals ---
     km = KeywordManager(df_filtered, fuzzy_threshold=args.fuzzy)
     totals, df_labelled = km.run(
-        reverse=args.all, income_mode=args.income, net_mode=args.net
+        income_mode=args.income,
+        net_mode=args.net
     )
 
     # --- Map entities to keywords for later filtering ---
     patterns = load_group_patterns()
-    entity_to_keyword = dict(zip(df_labelled["entity"], df_labelled["keyword"]))
+    entity_to_keyword = (
+        df_labelled[["entity", "keyword"]]
+        .drop_duplicates()
+        .set_index("entity")["keyword"]
+        .to_dict()
+    )
     df_full["entity"] = df_full["description"].apply(km._extract_entity)
     df_full["entity"] = df_full["entity"].apply(lambda e: _apply_patterns(e, patterns))
     df_full["keyword"] = df_full["entity"].map(entity_to_keyword).fillna(df_full["entity"])
@@ -87,12 +93,6 @@ def main() -> None:
     # --- Filter near-zero totals if net mode ---
     if args.net:
         totals = totals[totals.abs() >= 0.01]
-
-    # --- Re-sort totals according to display rules ---
-    if args.net or args.income:
-        totals = totals.sort_values(ascending=args.all)
-    else:
-        totals = totals.sort_values(ascending=not args.all)
 
     # --- Report ---
     reporter = Reporter(
