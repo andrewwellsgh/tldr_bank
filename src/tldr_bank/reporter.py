@@ -62,20 +62,33 @@ class Reporter:
         if self.totals.empty:
             return
 
-        # Pick top 5 by absolute value
-        top5_idx = self.totals.abs().sort_values(ascending=False).head(5).index
-        chart_data = self.totals.loc[top5_idx]
+        # Determine the data subset based on show_all flag
+        data = self.totals if self.show_all else self.totals.head(10)
 
-        # For display, take absolute value (bars always upward)
-        labels = [k[: self.truncate] for k in chart_data.index]
-        values = list(chart_data.abs())  # <-- absolute value ensures bars are upward
+        # --- Top 5 chart ---
+        top_chart_data = data.head(5)
+        top_labels = [k[:self.truncate] for k in top_chart_data.index]
+        top_values = list(top_chart_data.abs())  # absolute value for upward bars
 
         plt.clf()
-        plt.bar(labels, values)
+        plt.bar(top_labels, top_values)
         plt.title("Top 5")
         plt.xlabel("Item")
         plt.ylabel("Amount")
         plt.show()
+
+        # --- Bottom 5 chart, only if --all is used ---
+        if self.show_all:
+            bottom_chart_data = data.tail(5)
+            bottom_labels = [k[:self.truncate] for k in bottom_chart_data.index]
+            bottom_values = list(bottom_chart_data.abs())
+
+            plt.clf()
+            plt.bar(bottom_labels, bottom_values)
+            plt.title("Bottom 5")
+            plt.xlabel("Item")
+            plt.ylabel("Amount")
+            plt.show()
 
     def _interactive_inspect(self) -> None:
         while True:
