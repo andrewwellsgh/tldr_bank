@@ -1,0 +1,9 @@
+# To Do (tl;dr bank)
+
+! tldr_bank not working due to empty file issue
+! tldr_bank proper readme check
+!tldr_bank - requirements.txt doesn’t exist in the readme
+!tldr_bank - check h .hide_custom_settings
+open .hide_custom_settings
+ Is right
+!tldr_bank playtest it with fake data, real data, replace fake data

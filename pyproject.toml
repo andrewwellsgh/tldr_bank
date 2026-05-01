@@ -3,6 +3,7 @@ name = "tldr_bank"
 version = "2.0.0"
 description = "Terminal Bank Wrapped"
 authors = ["You"]
+packages = [{ include = "tldr_bank", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"

@@ -36,6 +36,9 @@ It is designed to work with anything that looks like a Bank formatted CSV.
 - **Safe File Handling**  
   Supports file locking to prevent simultaneous edits during processing.
 
+- CSV and Settings store folders
+  So you can save your settings and csvs and swap them in and out. Settings are read from project root, csvs are read from csv_input folder.
+
 ### Custom Groups
 ...
   On command line in project root:
@@ -147,11 +150,11 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run the CLI tool:
+`poetry run tldr_bank`
+* Note: You may need to install poetry first, using `poetry install`
 
-```bash
-python -m tldr_bank.main [options]
-```
+Move your CSV(s) in to csv_input folder.
+Use csv_store to keep other csvs organised.
 
 ### Options
 
@@ -224,3 +227,12 @@ We welcome contributions, bug reports, and suggestions to improve TLDR Bank!
 Thank you for helping make TLDR Bank better!
 
 > Note: TLDR Bank is licensed under the Elastic License. Contributions are welcome for personal or non-commercial use. Commercial use requires permission.
+
+
+# Bundle
+
+To bundle:
+`./bundle.sh`
+> Outputs project to bundle.txt
+* Note: Excludes csv_store folder due to size. 
+You can comment out excludes in bundle.sh

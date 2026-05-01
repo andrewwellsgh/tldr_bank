@@ -2,17 +2,19 @@
 .custom_group_settings
 .custom_spoof_settings
 .hide_custom_settings
+
+#Ignore any content in files
 /csv_input/*
-project_export.txt
-export_project.sh
-install_updates.sh
-landlord_payments.txt
-bundle_code.sh
-combined_code.txt
-/settings/*
+/settings_store/*
 /csv_store/*
 
-# Placeholder Files
+#Ignore bundled code
+bundle.txt
+
+# To Do list
+to do.txt
+
+# Gitkeep Files (avoids folders being ignored if empty)
 !csv_input/.gitkeep
 !settings/.gitkeep
 !csv_store/.gitkeep
