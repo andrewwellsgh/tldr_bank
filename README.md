@@ -1,6 +1,8 @@
 # TLDR Bank
 by Andy
 
+- Please note, this is an experimental hobby project. It comes with no warranty or guaruntees of functionality. Use at your own risk.
+
 
 "The car built for Homer"
 
